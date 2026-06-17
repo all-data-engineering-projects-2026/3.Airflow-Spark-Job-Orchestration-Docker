@@ -12,7 +12,7 @@ A production-ready Docker Compose setup for **Apache Spark 4.0** + **Apache Airf
 
 ## Project Structure
 
-![img_1.png](img_1.png)
+![img.png](img.png)
 
 ## Getting Started
 
@@ -26,7 +26,7 @@ cd spark-airflow-standalone
 ### 2. Create Environment File
 ```bash
 cp airflow.env.example airflow.env
-(edit airflow.env and update the SECRET_KEY if needed.)
+(edit airflow.env.example to airflow.env and update the SECRET_KEY.)
 ```
 
 ### 3. Build and Start the Cluster
