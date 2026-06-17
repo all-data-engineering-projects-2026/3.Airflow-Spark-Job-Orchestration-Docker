@@ -1,0 +1,103 @@
+x-spark-common: &spark-common
+  build:
+    context: .
+    dockerfile: Dockerfile.spark
+  volumes:
+    - ./jobs:/opt/spark/jobs
+  networks:
+    - code-with-yu
+
+x-airflow-common: &airflow-common
+  build:
+    context: .
+    dockerfile: Dockerfile
+  env_file:
+    - airflow.env
+  volumes:
+    - ./jobs:/opt/airflow/jobs
+    - ./dags:/opt/airflow/dags
+    - ./logs:/opt/airflow/logs
+  depends_on:
+    - postgres
+  networks:
+    - code-with-yu
+
+services:
+  spark-master:
+    <<: *spark-common
+    command: /opt/spark/sbin/start-master.sh
+    ports:
+      - "9090:8080"   # Spark Master UI
+      - "7077:7077"   # Spark Master
+    environment:
+      - SPARK_LOCAL_IP=spark-master
+      - SPARK_NO_DAEMONIZE=true
+#    healthcheck:
+#      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+#      interval: 10s
+#      retries: 5
+
+  spark-worker-1:
+    <<: *spark-common
+    command: /opt/spark/sbin/start-worker.sh spark://spark-master:7077
+    depends_on:
+      - spark-master
+    environment:
+      - SPARK_LOCAL_IP=spark-worker-1
+      - SPARK_WORKER_CORES=2
+      - SPARK_WORKER_MEMORY=1g
+      - SPARK_NO_DAEMONIZE=true
+
+  spark-worker-2:
+    <<: *spark-common
+    command: /opt/spark/sbin/start-worker.sh spark://spark-master:7077
+    depends_on:
+      - spark-master
+    environment:
+      - SPARK_LOCAL_IP=spark-worker-2
+      - SPARK_WORKER_CORES=2
+      - SPARK_WORKER_MEMORY=1g
+      - SPARK_NO_DAEMONIZE=true
+
+  postgres:
+    image: postgres:14.0
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - code-with-yu
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow"]
+      interval: 10s
+      retries: 5
+
+  webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "8080:8080"
+    depends_on:
+      - scheduler
+      - spark-master
+
+  scheduler:
+    <<: *airflow-common
+    command: bash -c "
+      airflow db migrate &&
+      airflow users create --username admin --firstname him --lastname pat --role Admin --email airscholarxyz@gmail.com --password admin || true &&
+      airflow scheduler"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      spark-master:
+        condition: service_started
+
+networks:
+  code-with-yu:
+    driver: bridge
+
+volumes:
+  postgres_data:
