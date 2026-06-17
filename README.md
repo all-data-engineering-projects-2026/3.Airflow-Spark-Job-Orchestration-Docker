@@ -63,5 +63,5 @@ docker compose up -d
 
 - This setup is used by me for development and learning.
 - For production, consider using Kubernetes or managed services (EMR, Databricks, etc.).
-
+- Please refer Airflow_Pyspark_DE_project_details.pdf for project details
 ---
